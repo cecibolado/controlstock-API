@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const StockMovement = require('../models/StockMovement');
 
 exports.create = async (req, res, next) => { try { const producto = await Product.create(req.body); res.status(201).json({ mensaje: 'Producto creado', producto }); } catch (error) { next(error); } };
 
@@ -25,6 +26,10 @@ exports.adjustStock = async (req, res, next) => {
     const producto = await Product.findById(req.params.id);
     if (!producto) return res.status(404).json({ mensaje: 'Producto no encontrado' });
     if (producto.stock + cantidad < 0) return res.status(400).json({ mensaje: 'Stock insuficiente para realizar la salida' });
-    producto.stock += cantidad; await producto.save(); res.json({ mensaje: 'Stock actualizado', producto });
+    const stockAntes = producto.stock;
+    producto.stock += cantidad;
+    await producto.save();
+    await StockMovement.create({ producto: producto._id, tipo: cantidad > 0 ? 'entrada' : 'salida', cantidad: Math.abs(cantidad), stockAntes, stockDespues: producto.stock });
+    res.json({ mensaje: 'Stock actualizado', producto });
   } catch (error) { next(error); }
 };
